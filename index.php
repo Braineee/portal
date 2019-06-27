@@ -11,7 +11,7 @@ $student = new User();
 
 if($student->isLoggedin()){
   // Get the user data
-  $_SESSION['student_details'] = $student->data();
+  $_SESSION['student_details'] = $_SESSION['student_data'];
 }else{
   if($_GET["pg"] != 'verify'){
     // go to the login page if the user is not logged in
@@ -26,24 +26,28 @@ if (isset($_GET["pg"])){
 }
 
 // include the header file
-if(strpos($page_name, 'print') === false ){
 include(ROOT_PATH . "inc/head.php");
-}
+
 
 if($page_name != 'login'){
-  if(strpos($page_name, 'print') === false ){
-    //include the navbar
-    include(ROOT_PATH . "inc/navbar.php");
-  }
+  //include the navbar
+  include(ROOT_PATH . "inc/navbar.php");
 }
 
-//check the school fees status
+
 if($page_name != 'login' && $page_name != 'logout'){
+
+  // check the school fees status
   if(!isset($_SESSION['school_fees_payment_status'])){
     include('controller/CheckSchoolFeesStatus.php');
   }
-}
 
+  // check the extra fee status
+  if (!isset($_SESSION['extra_payment'])) {
+    include('controller/CheckExtraFeesStatus.php');
+  }
+  
+}
 
 //check the file
 $filename = ROOT_PATH ."pages/" . $page_name . ".php";
@@ -56,8 +60,6 @@ if (file_exists($filename)) {
 }
 
 if($page_name != 'login'){
-  if(strpos($page_name, 'print') === false ){
-    //include footer
-    include(ROOT_PATH . "inc/footer.php");
-  }
+  //include footer
+  include(ROOT_PATH . "inc/footer.php");
 }

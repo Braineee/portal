@@ -52,7 +52,7 @@ class User {
 	public function find($user = null){
 		if($user){
 			$field = 'matricnum';
-			$data = $this->_db->get('vw_student_record_1', array($field, '=', $user));
+			$data = $this->_db->get('student_record', array($field, '=', $user));
 			if($data->count()){
 				$this->_data = $data->first();
 				return true;
@@ -100,18 +100,42 @@ class User {
                     $_SESSION['is_admin'] = true;
 				}
 
-				// pass the student data to the student session
+				// Pass the student data to the student session
 				$_SESSION['student_data'] = $this->data();
 
+				// Validate the student data
+                if ($this->data()->ProgrammeID == "") {
+                    include(ROOT_PATH ."/Controller/ValidateStudentData.php");
+				}
+
+				// re-spool the student data from the vw_student_record_1 table
+                $get_student_data = DB_STUDENT::getInstance()
+                ->get('vw_student_record_1', array('matricnum','LIKE',$_SESSION['student_data']->matricnum));
+				error_handler($get_student_data, $this->data()->matricnum, "Error occured on get_student_data query", "models/user.php");
+
+				// check if the data still does not exist
+				if($get_student_data->count() == 0) {
+					return "There seems to be a problem with your record, please visit CITM or CITM HELPDESK for rectification";
+                    die();
+				}
+
+				// re-assign the student data to the session
+				$_SESSION['student_data'] = $get_student_data->first();
+
 				// check if fulltime or parttime
-				$first_letter_of_matric_number = $_SESSION['student_data']->matricnum;
-				if (strtolower($first_letter_of_matric_number[0]) == 'f') {
+				if (stripos($_SESSION['student_data']->programme_type, 'FULL TIME') !== false) {
 					$_SESSION['is_full_time'] = true;
 					$_SESSION['is_part_time'] = false;
-				} elseif (strtolower($first_letter_of_matric_number[0]) == 'p') {
+				} elseif (stripos($_SESSION['student_data']->programme_type, 'PART TIME') !== false) {
 					$_SESSION['is_full_time'] = false;
 					$_SESSION['is_part_time'] = true;
+				} else {
+					$_SESSION['is_full_time'] = false;
+                    $_SESSION['is_part_time'] = false;
 				}
+
+				//var_dump($_SESSION['is_part_time']);
+				//die();
 				
 				if ($_SESSION['is_full_time']) {
 					// get the current academic session for full time student
@@ -259,7 +283,7 @@ class User {
 							$get_student_passport = DB_STUDENT::getInstance()
 							->get('student_passport', array('StudentID','LIKE',$_SESSION['student_data']->matricnum));
 							if ($get_student_passport->count() > 0){
-								$_SESSION['student_passport'] =  BASE_URL."/passport_db/{$get_student_passport->first()->Programme}/{$get_student_passport->first()->Passport}";
+								$_SESSION['student_passport'] =  "http://portal.yabatech.edu.ng/portalplus/passport_db/{$get_student_passport->first()->Programme}/{$get_student_passport->first()->Passport}";
 							}
 							
 						}

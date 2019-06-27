@@ -1,166 +1,148 @@
 <?php
-//initialize the amonut
-$amount = 0;
-$_SESSION['amount_to_pay'] = 0;
+// initialize payment variables
+$amount_to_pay = 0;
+$_SESSION['school_fees_amount_to_pay_full'] = 0;
+$_SESSION['school_fess_amount_to_pay_half'] = 0;
+$_SESSION['school_fess_balance_to_pay'] = 0;
+$_SESSION['amount_paid_by_student'] = 0;
+$_amont_to_select = '';
 
-//check if it is direct entry or normal Application
-strpos($_SESSION['applicant_details']->program, '200') !== false ?
-$payment_to_select = "CoursefeesYrDE_New" : $payment_to_select = "CoursefeesYr1_New";
+// temporary
+$_EBPORTAL_SESSION_ID = $_SESSION['current_academic_session']->SessionID + 31;
 
-//check if the neccessary parameters are available
-if(!isset($_SESSION['current_application_session_studentdb']) || !isset($_SESSION['program_type_acronym'])
-){
-  redirect('?pg=logout');
-  die();
+$first_year = array(1 , 4 , 7 , 11 , 14);
+$second_year = array(2 , 5 , 8 , 12 , 15);
+$third_year = array( 3 ,  6 ,  9 ,  13);
+$fourth_year = array(10);
+
+// get the level
+if (in_array($_SESSION['student_details']->level, $first_year)) {
+  $_amont_to_select = "CoursefeesYr1_New";
 }
 
-try{
-  //get details of the payment
-  $query="
-    SELECT * FROM course
-    WHERE
-    session = '{$_SESSION['current_application_session_studentdb']}' AND
-    prog_status = '{$_SESSION['applicant_details']->PTAcronym}' AND
-    course = '{$_SESSION['applicant_details']->program}'
-  ";
+if (in_array($_SESSION['student_details']->level, $second_year)) {
+  //  Check if thwe student is a direct entry student
+  strpos($_SESSION["student_details"]->programme, '200') !== false ? 
+  $_amont_to_select = "CoursefeesYrDE_New" : $_amont_to_select = "CoursefeesYr2_New";
+}
 
+if (in_array($_SESSION['student_details']->level, $third_year)) {
+  $_amont_to_select = "CoursefeesYr3_New";
+}
 
-  $get_payment_details = DB_STUDENT::getInstance()->query($query);
+if (in_array($_SESSION['student_details']->level, $fourth_year)) {
+  $_amont_to_select = "CoursefeesYr4_New";
+}
 
-  //check for errors
-  if(!is_object($get_payment_details)){
-    $log = new Logger(ROOT_PATH ."error_log.html");
-    $log->setTimestamp("D M d 'y h.i A");
-    $log->putLog("\n Error Message: controller/checkschoolfeesstatus :: variable (get_payment_details) did not drop an object >> ".$_SESSION['applicant_details']->Appnum);
-    die("<br><br><a href='?pg=home' class='btn btn-success'>Goto homepage</a>");
-  }
-  if($get_payment_details->error() == true){
-    $log = new Logger(ROOT_PATH ."error_log.html");
-    $log->setTimestamp("D M d 'y h.i A");
-    $log->putLog("\n Error Message: controller/checkschoolfeesstatus :: ".$get_payment_details->error_message()[2].">> ".$_SESSION['applicant_details']->Appnum);
-    die("<br><br><a href='?pg=home' class='btn btn-success'>Goto homepage</a>");
-  }
-  //end of check for errors
+// prepare the get schoolfees amount query
+$get_amount_to_pay_query = "
+  SELECT * FROM course WHERE 
+  session LIKE '{$_SESSION['current_academic_session']->SessionID}' AND 
+  course LIKE '{$_SESSION['student_details']->programme}'
+";
 
-  //var_dump($get_payment_details);
-  switch ($get_payment_details->count()) {
-    case "0":
-      // schoolfees is not set
-      Session::flash('info', 'Your school fees has not been set please check back later.');
-      //set payment status as 'NOT_SET'
-      $_SESSION['school_fees_payment_status'] = 'NOT_SET';
-      break;
+//run the query
+$get_the_amount_to_pay = DB_STUDENT::getInstance()->query($get_amount_to_pay_query);
+error_handler($get_the_amount_to_pay, $_SESSION['student_details']->matricnum, "Error occured on get_the_amount_to_pay query", "controller/CheckSchoolFeesStatus.php");
 
-    case "1":
+// check if the payment 
+switch ($get_the_amount_to_pay->count()) {
+  case 0:
+    // schoolfees is not set
+    Session::flash('info', 'Your school fees has not been set please check back later.');
+    //set payment status as 'NOT_SET'
+    $_SESSION['school_fees_payment_status'] = 'NOT_SET';
+    break;
+  
+  case 1:
+    // get the amount
+    $amount_to_pay = $get_the_amount_to_pay->first()->$_amont_to_select;
 
-      //get the schoolfees details
-      $payment_details = $get_payment_details->first();
+    // get the total amount to pay
+    $_SESSION['school_fees_amount_to_pay_full'] = $amount_to_pay;
 
-        //get the payment $amount_to_pay
-        $real_amount = $payment_details->$payment_to_select;
+    // get the half amount to pay
+    $_SESSION['school_fess_amount_to_pay_half'] = $amount_to_pay / 2;
 
-        //initialize the actual ammount
-        $_SESSION['actual_amount'] = $real_amount;
+    // get all the school fees payment made by the student
+    // prepare the get query
+    $get_paid_school_fees_query = "
+      SELECT * FROM vw_YCTPAY_Transactions WHERE 
+      (PaymentID = 5 OR PaymentID = 70) AND 
+      SessionID LIKE '{$_EBPORTAL_SESSION_ID}' AND 
+      PayeeNum LIKE '{$_SESSION['student_details']->matricnum}' AND 
+      TransactionStatus like '%Successful%'
+    ";
 
-        //initialize the payment $amount_to_pay
-        $amount_to_pay = 0;
+    // run the query
+    $get_all_school_fees_paymnet = DB_EBPORTAL::getInstance()->query($get_paid_school_fees_query);
+    error_handler($get_all_school_fees_paymnet, $_SESSION['student_details']->matricnum, "Error occured on get_paid_school_fees_query query", "controller/CheckSchoolFeesStatus.php");
 
-        //check if it is pt or ft
-        //if it is parttime divide the school fees by 2 to get the half payment
-        $_SESSION['applicant_details']->PTAcronym == 'PT' ? $amount_to_pay = ($real_amount/2) :  $amount_to_pay = $real_amount;
+    // student has not made any payment
+    if ($get_all_school_fees_paymnet->count() == 0) {
+        $_SESSION['school_fees_payment_status'] = 'NOT_PAID';
+    }
 
-        //initialize the real amount session
-        $_SESSION['real_amount'] = $amount_to_pay;
-
-        //check if the applicant has payed school fees
-        $query="
-          SELECT * FROM vw_YCTPAY_Transactions
-          WHERE
-          PaymentID = 5  AND
-          SessionID LIKE '{$_SESSION['current_application_session_ebportaldb']}' AND
-          Appnum LIKE '{$_SESSION['applicant_details']->Appnum}' AND
-          TransactionStatus like 'Successful'
-        ";
-
-        $get_applicant_school_fees_status = DB_EBPORTAL::getInstance()->query($query);
-
-        //check for errors
-        if(!is_object($get_applicant_school_fees_status)){
-          $log = new Logger(ROOT_PATH ."error_log.html");
-          $log->setTimestamp("D M d 'y h.i A");
-          $log->putLog("\n Error Message: controller/checkschoolfeesstatus :: variable (get_applicant_school_fees_status) did not drop an object >> ".$_SESSION['applicant_details']->Appnum);
-          die("<br><br><a href='?pg=home' class='btn btn-success'>Goto homepage</a>");
+    // student has made payment, confirm payment
+    if ($get_all_school_fees_paymnet->count() > 0) {
+      // get if the student has paid the stipulated school fee
+        foreach ($get_all_school_fees_paymnet->results() as $amount_paid) {
+            $_SESSION['amount_paid_by_student'] += $amount_paid->Amount;
         }
-        if($get_applicant_school_fees_status->error() == true){
-          $log = new Logger(ROOT_PATH ."error_log.html");
-          $log->setTimestamp("D M d 'y h.i A");
-          $log->putLog("\n Error Message: controller/checkschoolfeesstatus :: ".$get_applicant_school_fees_status->error_message()[2].">> ".$_SESSION['applicant_details']->Appnum);
-          die("<br><br><a href='?pg=home' class='btn btn-success'>Goto homepage</a>");
-        }
-        //end of check for errors
 
-
-        //if applicant hass paid flag applicant_school_fees_payment_status as 'PAID_COMPLETE' esle as 'NOT_COMPLETED'
-          // if its partime check if the ammount paid is equal half the actual amount
-          $get_applicant_school_fees_status->count() >= 0 ? $status_count = 1 : $status_count = $get_applicant_school_fees_status->count();
-          switch ($status_count) {
-            case '0':
-              // flag as NOT PAID
-              $_SESSION['school_fees_payment_status'] = 'NOT_PAID';
-              $_SESSION['amount_to_pay'] = $amount_to_pay;
-              Session::flash('info', 'Your have not paid your school fees.');
-              break;
-
-            case '1':
-              //initialize the total payment
-              $total_applicant_payment = 0;
-
-              //Get applicant payments
-              $applicant_school_fees_status = $get_applicant_school_fees_status->results();
-
-              //add all the payment up
-              foreach ($applicant_school_fees_status as $payment) {
-                $total_applicant_payment = $payment->Amount + $total_applicant_payment;
-              }
-
-              //check if what is paid is equal to the amount to be paid
-              if($total_applicant_payment >= $amount_to_pay){
+        // if the student is a full time
+        if ($_SESSION['is_full_time']) {
+            // check if the payment made is equal to the payment approved
+            if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fees_amount_to_pay_full']) {
                 //flag as complete payments
                 $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
                 $_SESSION['amount_to_pay'] = $amount_to_pay;
-                Session::flash('success', 'Your have completed your school fees payment please proceed to generate your matric number if you have not.');
-              }else{
+                Session::flash('success', 'Your have completed your school fees payment please proceed to register your courses for this semester if you have not.');
+            } else {
                 //flag as incomplete payments
                 $_SESSION['school_fees_payment_status'] = 'NOT_COMPLETED';
-                $_SESSION['amount_to_pay'] = $amount_to_pay - $total_applicant_payment;
                 Session::flash('info', 'Your have not completed your school fees payment.');
-              }
-              break;
+            }
+        }
 
-            default:
-              Session::flash('error', 'Err: Could not get school fees payment status.');
-              //set payment status as 'PAYMENT_NOT_DEFINED'
-              $_SESSION['school_fees_payment_status'] = 'PAYMENT_NOT_DEFINED';
-              break;
-          }
-
-
-      break;
-
-    default:
-      Session::flash('error', 'Err: Could not get school fees details.');
-      //set payment status as 'NOT_DEFINED'
-      $_SESSION['school_fees_payment_status'] = 'NOT_DEFINED';
-  };
-
-
-
-
-}catch(Exception $e){
-
-  $log = new Logger(ROOT_PATH ."error_log.txt");
-  $log->setTimestamp("D M d 'y h.i A");
-  $log->putLog("\n Error Message: ".$e->getMessage().">> ".$_SESSION['applicant_details']->Appnum);
-  die("<a href='?pg=home' class='btn btn-success'>Goto homepage</a>");
-
+        // if the student is a partime
+        if ($_SESSION['is_part_time']) {
+            // check if the payment made is equal to the payment approved
+            if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fees_amount_to_pay_full']) {
+              //flag as complete payments
+              $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
+              $_SESSION['amount_to_pay'] = $amount_to_pay;
+              Session::flash('success', 'Your have completed your school fees payment please proceed to register your courses for this semester.');
+            } else if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fess_amount_to_pay_half']) {
+              //flag as complete payments
+              $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE_HALF';
+              $_SESSION['amount_to_pay'] = $amount_to_pay;
+              Session::flash('success', 'Your have completed half of your school fees payment please proceed to register your courses for this semester if you have not.');
+            } else {
+              //flag as incomplete payments
+              $_SESSION['school_fees_payment_status'] = 'NOT_COMPLETED';
+              Session::flash('info', 'Your have not completed your school fees payment.');
+            }
+        }
+    }
+    break;
+  
+  default:
+    Session::flash('error', 'Err: Could not get school fees details.');
+    //set payment status as 'NOT_DEFINED'
+    $_SESSION['school_fees_payment_status'] = 'NOT_DEFINED';
+    break;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
