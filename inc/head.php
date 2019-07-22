@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="applicant portal for newly admitted student">
     <meta name="author" content="CITM-yabatech">
-    <title>Applicant Portal</title>
+    <title>Student Portal</title>
 
     <!-- Bootstrap core CSS -->
     <!--link href="https://fonts.googleapis.com/css?family=Open+Sans:300" rel="stylesheet"-->
@@ -27,4 +27,6 @@
 
     <!-- Jquery -->
     <script type="text/javascript" src="<?= BASE_URL; ?>assets/js/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="<?= BASE_URL; ?>assets/js/toastr.min.js"></script>
+    <script type="text/javascript" src="<?= BASE_URL; ?>assets/js/sweetalert.js"></script>
   </head>

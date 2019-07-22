@@ -30,8 +30,10 @@ class CrudStudent {
 	public function create($tablename, $fields = array()){
 		if (!$this->_db->insert($tablename, $fields)) {
 			error_handler($this->_db, $_SESSION['student_data']->matricnum, "Error occured on create query for [{$tablename}] table", "models/CrudStudent.php");
+		} else {
+			return true;
 		}
-  }
+  	}
 
 
     /*
@@ -55,7 +57,7 @@ class CrudStudent {
 	public function delete($tablename, $colMatch, $id = null){
 		if(!$this->_db->delete($tablename, array($colMatch, "=", $id))){
 			throw new Exception('There Was an error deleting.');
-    }
+    	}
 	}
 
 

@@ -32,8 +32,7 @@ $('document').ready(function(){
     });
 
     $( "form" ).submit(function( e ) {
-        e.preventDefault();
-
+      e.preventDefault();
       if ($('#matric_number').val() == "" || $('#password').val() == ""){
             if($('#matric_number').val() == ""){
               error_alert('Please enter your app number');

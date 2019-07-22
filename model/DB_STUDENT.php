@@ -200,7 +200,7 @@ class DB_STUDENT {
     * return type = object
    */
    public function first(){
-       return $this->results()[0];
+       return $this->_results[0];
    }
 
    /*

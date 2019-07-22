@@ -18,6 +18,9 @@
         <li class="nav-item">
           <a class="nav-link" href="http://portal.yabatech.edu.ng/helpdesk"><b>Helpdesk</b></a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link" href="?pg=settings"><b>Settings</b></a>
+        </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="dropdown07" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><b>Other links</b></a>
           <div class="dropdown-menu" aria-labelledby="dropdown07">
@@ -31,7 +34,7 @@
       <div class="my-2 my-md-0 inline">
         <img class="inset" src="<?= $_SESSION['student_passport'] ?>" alt="student">&nbsp;
         <b style="color:#fff;"><?= strtolower($_SESSION['student_details']->surname) ?> <?= strtolower($_SESSION['student_details']->firstname) ?></b>&ensp;
-        <a href="?pg=logout">
+        <a href="#" class="logout">
           <img src="<?= BASE_URL ?>assets/icons/logout.svg" alt="logout" width="20px" data-toggle="tooltip" data-placement="bottom" title="Click this button to sign out">
         </a>
       </div>

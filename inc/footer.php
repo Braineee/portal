@@ -11,6 +11,7 @@
 <!-- Bootstrap core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
+<script src="<?php echo BASE_URL; ?>ajax/logout.js"></script>
 <script src="<?= BASE_URL ?>assets/js/jquery.slimscroll.min.js"></script>
 <script src="<?= BASE_URL ?>assets/js/popper.min.js"></script>
 <script src="<?= BASE_URL ?>assets/js/bootstrap.min.js"></script>

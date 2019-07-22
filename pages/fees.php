@@ -60,7 +60,7 @@
               <div class="container py-3">
                 <div class="col-md-12 card" style="padding-left: 0px;padding-right: 0px;"
                      data-toggle="tooltip" data-placement="bottom" title="Just click this bar">
-                  <a href="?pg=school-fees-receipt" class="text-green">
+                  <a href="?pg=print-out-school-fees-receipt" class="text-green">
                   <div class="row">
                       <div class="col-md-4 col-sm-4 text-center v-align py-4">
                         <img src="<?= BASE_URL ?>assets/icons/printer.svg" alt="user_icon" width="50px" height="50px">
@@ -79,7 +79,11 @@
               </div>
             </section>
         </div>
-      <a href="?pg=home" class="btn back-button pull-right"><i class="fa fa-arrow-left"></i>&ensp;<b>Go back</b></a>
+        <br>
+        <hr>
+        <div class="col-md-6 col-sm-12 text-right py-2">
+          <a href="?pg=home" class="btn back-button btn-md btn-block"><i class="fa fa-arrow-left"></i>&ensp;<b>Go back</b></a>
+        </div>
     </div>
   </div>
 </div>

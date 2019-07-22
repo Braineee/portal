@@ -49,4 +49,4 @@
         </div>
     </div>
   </body>
-  <script type="text/javascript" src="<?php echo BASE_URL; ?>ajax/login.js"></script>
+  <script type="text/javascript" src="<?php echo BASE_URL; ?>ajax/login.js?n=1"></script>

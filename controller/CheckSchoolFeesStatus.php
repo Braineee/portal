@@ -34,6 +34,17 @@ if (in_array($_SESSION['student_details']->level, $fourth_year)) {
   $_amont_to_select = "CoursefeesYr4_New";
 }
 
+//get payment description
+if ($_SESSION['is_part_time']) {
+    $get_payment_description = DB_EBPORTAL::getInstance()->get('YCTPAY_Payments', array('PaymentID','=',70));
+}
+if ($_SESSION['is_full_time']) {
+    $get_payment_description = DB_EBPORTAL::getInstance()->get('YCTPAY_Payments', array('PaymentID','=',5));
+}
+error_handler($get_payment_description, $_SESSION['student_details']->matricnum, "Error occured on get_payment_description query", "controller/CheckSchoolFeesStatus.php");
+$_SESSION['school_fees_payment_details'] = $get_payment_description->first();
+
+
 // prepare the get schoolfees amount query
 $get_amount_to_pay_query = "
   SELECT * FROM course WHERE 
@@ -80,50 +91,84 @@ switch ($get_the_amount_to_pay->count()) {
 
     // student has not made any payment
     if ($get_all_school_fees_paymnet->count() == 0) {
-        $_SESSION['school_fees_payment_status'] = 'NOT_PAID';
+      // flag the status as not paid
+      $_SESSION['school_fees_payment_status'] = 'NOT_PAID';
     }
 
     // student has made payment, confirm payment
     if ($get_all_school_fees_paymnet->count() > 0) {
+
       // get if the student has paid the stipulated school fee
-        foreach ($get_all_school_fees_paymnet->results() as $amount_paid) {
-            $_SESSION['amount_paid_by_student'] += $amount_paid->Amount;
-        }
+      foreach ($get_all_school_fees_paymnet->results() as $amount_paid) {
+          $_SESSION['amount_paid_by_student'] += $amount_paid->Amount;
+      }
 
-        // if the student is a full time
-        if ($_SESSION['is_full_time']) {
-            // check if the payment made is equal to the payment approved
-            if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fees_amount_to_pay_full']) {
-                //flag as complete payments
-                $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
-                $_SESSION['amount_to_pay'] = $amount_to_pay;
-                Session::flash('success', 'Your have completed your school fees payment please proceed to register your courses for this semester if you have not.');
-            } else {
-                //flag as incomplete payments
-                $_SESSION['school_fees_payment_status'] = 'NOT_COMPLETED';
-                Session::flash('info', 'Your have not completed your school fees payment.');
-            }
-        }
+      // if the student is a full time
+      if ($_SESSION['is_full_time']) {
+        // check if the payment made is equal to the payment approved
+        if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fees_amount_to_pay_full']) {
 
-        // if the student is a partime
-        if ($_SESSION['is_part_time']) {
-            // check if the payment made is equal to the payment approved
-            if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fees_amount_to_pay_full']) {
-              //flag as complete payments
-              $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
-              $_SESSION['amount_to_pay'] = $amount_to_pay;
-              Session::flash('success', 'Your have completed your school fees payment please proceed to register your courses for this semester.');
-            } else if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fess_amount_to_pay_half']) {
-              //flag as complete payments
-              $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE_HALF';
-              $_SESSION['amount_to_pay'] = $amount_to_pay;
-              Session::flash('success', 'Your have completed half of your school fees payment please proceed to register your courses for this semester if you have not.');
-            } else {
-              //flag as incomplete payments
-              $_SESSION['school_fees_payment_status'] = 'NOT_COMPLETED';
-              Session::flash('info', 'Your have not completed your school fees payment.');
-            }
+          //flag as complete payments
+          $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
+
+          $_SESSION['amount_to_pay'] = $amount_to_pay;
+          Session::flash('success', 'Your have completed your school fees payment please proceed to register your courses for this semester if you have not.');
+      
+        } else {
+          // calculate the school fees balance to pay
+          $_SESSION['school_fess_balance_to_pay'] = $_SESSION['school_fees_amount_to_pay_full'] - $_SESSION['amount_paid_by_student'];
+
+          //flag as incomplete payments
+          $_SESSION['school_fees_payment_status'] = 'NOT_COMPLETED';
+          Session::flash('info', 'Your have not completed your school fees payment.');
+        
         }
+      }
+
+      // if the student is a partime
+      if ($_SESSION['is_part_time']) {
+
+        // check if the payment made is equal to the payment approved
+        if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fees_amount_to_pay_full']) {
+
+          //flag as complete payments
+          $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
+          $_SESSION['amount_to_pay'] = $amount_to_pay;
+
+          Session::flash('success', 'Your have completed your school fees payment please proceed to register your courses for this semester.');
+
+        // check if the payment made is equal to the half payment approved
+        } else if ($_SESSION['amount_paid_by_student'] >= $_SESSION['school_fess_amount_to_pay_half']) {
+
+          //flag as complete payments if it is first semester
+          if($_SESSION['current_semester']->SemesterID == '1') {
+
+            $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
+            $_SESSION['amount_to_pay'] = $amount_to_pay;
+            Session::flash('success', 'Your have completed half of your school fees payment please proceed to register your courses for this semester if you have not.');
+          
+          } else {
+
+            // calculate the school fees balance to pay
+            $_SESSION['school_fess_balance_to_pay'] = $_SESSION['school_fees_amount_to_pay_full'] - $_SESSION['amount_paid_by_student'];
+
+            //flag as incomplete payments
+            $_SESSION['school_fees_payment_status'] = 'NOT_COMPLETED';
+            Session::flash('info', 'Your have not completed your school fees payment.');
+
+          }
+          
+          //flag as not completed 
+        } else {
+          // calculate the school fees balance to pay
+          $_SESSION['school_fess_balance_to_pay'] = $_SESSION['school_fees_amount_to_pay_full'] - $_SESSION['amount_paid_by_student'];
+
+          //flag as incomplete payments
+          $_SESSION['school_fees_payment_status'] = 'NOT_COMPLETED';
+          Session::flash('info', 'Your have not completed your school fees payment.');
+
+        }
+      }
     }
     break;
   

